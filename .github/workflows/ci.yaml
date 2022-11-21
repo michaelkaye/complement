@@ -29,6 +29,36 @@ jobs:
           (cd homeserver && docker build -t complement-dendrite -f build/scripts/Complement.Dockerfile .)
           (cd cmd/homerunner/test && ./test.sh)
 
+  homerunner:
+    runs-on: ubuntu-latest
+    needs: complement-internal
+    permissions:
+      contents: read
+      packages: write
+    steps:
+       - name: Checkout clean copy
+         uses: actions/checkout@v3
+       - name: Login to registry
+         uses: docker/login-action@v1
+         with:
+           registry: ghcr.io
+           username: ${{ github.actor }}
+           password: ${{ secrets.GITHUB_TOKEN }}
+       - name: Work out labels
+         id: meta
+         uses: docker/metadata-action@v1
+         with: 
+           images: ghcr.io/${{ github.repository }}
+
+       - name: Build and push docker image
+         uses: docker/build-push-action@v2
+         with:
+           context: .
+           file: ./cmd/homerunner/Dockerfile
+           push: true
+           tags: ${{ steps.meta.outputs.tags }}
+           labels: ${{ steps.meta.outputs.labels }}
+
 
   complement:
     name: Complement (${{ matrix.homeserver }})
